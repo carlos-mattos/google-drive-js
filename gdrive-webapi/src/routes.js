@@ -1,5 +1,5 @@
 import { logger } from "./logger.js";
-import FileHelper from "../../src/fileHelper.js";
+import FileHelper from "./fileHelper.js";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 

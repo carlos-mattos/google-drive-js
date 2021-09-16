@@ -111,7 +111,7 @@ describe("#Routes suite test", () => {
 
   describe("#get", () => {
     test("given method GET it should list all files downloaded", async () => {
-      const route = new Routes();
+      const routes = new Routes();
 
       const params = {
         ...defaultParams,
@@ -127,17 +127,17 @@ describe("#Routes suite test", () => {
       ];
 
       jest
-        .spyOn(route.fileHelper, route.fileHelper.getFileStatus.name)
+        .spyOn(routes.fileHelper, routes.fileHelper.getFilesStatus.name)
         .mockResolvedValue(fileStatusesMock);
+
+      params.request.method = "GET";
+
+      await routes.handler(...params.values());
+
+      expect(params.response.writeHead).toHaveBeenCalledWith(200);
+      expect(params.response.end).toHaveBeenCalledWith(
+        JSON.stringify(fileStatusesMock)
+      );
     });
-
-    params.request.method = "GET";
-
-    await routes.handler(...params.values());
-
-    expect(params.response.writeHead).toHaveBeenCalledWith(200);
-    expect(params.response.end).toHaveBeenCalledWith(
-      JSON.stringify(fileStatusesMock)
-    );
   });
 });
