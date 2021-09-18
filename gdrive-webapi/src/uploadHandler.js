@@ -4,13 +4,47 @@ import fs from "fs";
 import { logger } from "./logger";
 
 export default class UploadHandler {
-  constructor({ io, socketID, downloadsFolder }) {
+  constructor({ io, socketID, downloadsFolder, messageTimeDelay = 200 }) {
     this.io = io;
     this.socketID = socketID;
     this.downloadsFolder = downloadsFolder;
+    this.ON_UPLOAD_EVENT = "file-upload";
+    this.messageTimeDelay = messageTimeDelay;
   }
 
-  handleFileBytes() {}
+  canExecute(lastExecution) {
+    return Date.now() - lastExecution >= this.messageTimeDelay;
+  }
+
+  handleFileBytes(filename) {
+    this.lastMessageSent = Date.now();
+
+    async function* handleData(source) {
+      let processedAlready = 0;
+
+      for await (const chunk of source) {
+        yield chunk;
+
+        processedAlready += chunk.length;
+
+        if (!this.canExecute(this.lastMessageSent)) {
+          continue;
+        }
+
+        this.lastMessageSent = Date.now();
+
+        this.io
+          .to(this.socketID)
+          .emit(this.ON_UPLOAD_EVENT, { processedAlready, filename });
+
+        logger.info(
+          `File [${filename}] got ${processedAlready} bytes to ${this.socketID}`
+        );
+      }
+    }
+
+    return handleData.bind(this);
+  }
 
   async onFile(fieldname, file, filename) {
     const saveTo = `${this.downloadsFolder}/${filename}`;

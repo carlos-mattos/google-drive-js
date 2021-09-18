@@ -1,20 +1,25 @@
 import { describe, test, expect, jest } from "@jest/globals";
 import Routes from "../../src/routes.js";
+import UploadHandler from "../../src/uploadHandler.js";
+import TestUtil from "../_util/testUtil.js";
 
 describe("#Routes suite test", () => {
+  const request = TestUtil.generateReadableStream(["some file bytes"]);
+  const response = TestUtil.generateWritableStream(() => {});
   const defaultParams = {
-    request: {
+    request: Object.assign(request, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-      method: "",
+      method: "POST",
       body: {},
-    },
-    response: {
+    }),
+
+    response: Object.assign(response, {
       setHeader: jest.fn(),
       writeHead: jest.fn(),
       end: jest.fn(),
-    },
+    }),
     values: () => Object.values(defaultParams),
   };
 
@@ -138,6 +143,39 @@ describe("#Routes suite test", () => {
       expect(params.response.end).toHaveBeenCalledWith(
         JSON.stringify(fileStatusesMock)
       );
+    });
+  });
+
+  describe("#post", () => {
+    test("it should validate post route workflow", async () => {
+      const routes = new Routes("/tmp");
+      const options = { ...defaultParams };
+
+      options.request.method = "POST";
+      options.request.url = "?socketId=10";
+
+      jest
+        .spyOn(
+          UploadHandler.prototype,
+          UploadHandler.prototype.registerEvents.name
+        )
+        .mockImplementation((header, onFinish) => {
+          const writable = TestUtil.generateWritableStream(() => {});
+          writable.on("finish", onFinish);
+
+          return writable;
+        });
+
+      await routes.handler(...options.values());
+
+      expect(UploadHandler.prototype.registerEvents).toHaveBeenCalled();
+      expect(options.response.writeHead).toHaveBeenLastCalledWith(200);
+
+      const expectedResult = JSON.stringify({
+        result: "Files uploaded with success!",
+      });
+
+      expect(defaultParams.response.end).toHaveBeenCalledWith(expectedResult);
     });
   });
 });
